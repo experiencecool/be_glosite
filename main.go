@@ -7,89 +7,115 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
-	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-type CallClass struct {
+type CallApplicationClass struct {
+	Id          int
+	Time        time.Time
 	Name        string
 	Phone       string
 	Description string
 }
 
-func get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Conent-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message": "GET called"}`))
-}
-
-func post(w http.ResponseWriter, r *http.Request) {
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	b, err := ioutil.ReadAll(r.Body)
-	fmt.Printf("%s", b)
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		var message CallClass
-		e := json.Unmarshal(b, &message)
-		if e != nil {
-			log.Fatal(e)
-		} else {
-			fmt.Println("---------------")
-			fmt.Println(message)
-			fmt.Println("---------------")
-
-			db := connectToDB()
-			var id = 0
-			err = db.QueryRow(
-				`INSERT INTO glosite.call_sub(name, phone, description) VALUES ($1, $2, $3)`,
-				message.Name, message.Phone, message.Description).Scan(&id)
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			w.Write([]byte(http.StatusText(http.StatusCreated)))
-		}
-
-	}
-
-}
-
 func connectToDB() *sql.DB {
-	connStr := "user=glosite password=glosite dbname=glosite sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
+	database, err := sql.Open("sqlite3", "./nraboy.db")
 	if err != nil {
 		log.Fatal(err)
 		panic(err)
 	} else {
-		return db
+		return database
 	}
 }
 
-func main() {
-	db := connectToDB()
-	rows, err := db.Query("SELECT * FROM glosite.call_sub")
+func createTable(database *sql.DB) {
+	statement, err :=
+		database.Prepare("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, time TIMESTAMP, name TEXT, phone TEXT, description TEXT)")
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
+		panic(err)
 	} else {
+		statement.Exec()
+	}
+}
+
+func insertIntoDb(database *sql.DB, name string, phone string, description string) {
+	statement, err :=
+		database.Prepare("INSERT INTO people (time, name, phone, description) VALUES (?, ?, ?, ?)")
+	if err != nil {
+		log.Fatal(err)
+		// panic(err)
+	} else {
+		statement.Exec(time.Now(), name, phone, description)
+	}
+
+}
+
+func getRows(database *sql.DB) {
+	rows, err := database.Query("SELECT id, time, name, phone, description FROM people")
+	if err != nil {
+		log.Fatal(err)
+		// panic(err)
+	} else {
+		var call CallApplicationClass
 		for rows.Next() {
-			var row CallClass
-			var temp string
-			if err := rows.Scan(&temp, &temp, &row.Name, &row.Phone, &row.Description); err != nil {
-				// Check for a scan error.
-				// Query rows will be closed with defer.
-				log.Fatal(err)
-			}
-			fmt.Println(row)
+			rows.Scan(&call.Id, &call.Time, &call.Name, &call.Phone, &call.Description)
+			fmt.Println(strconv.Itoa(call.Id) +
+				": |" + call.Time.Month().String() + strconv.Itoa(call.Time.Day()) + "| " +
+				call.Name + " " + call.Phone + " \"" + call.Description + "\"")
 		}
 	}
 
+}
+
+func get(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Conent-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	db := connectToDB()
+	getRows(db)
+	w.Write([]byte(`{"message": "GET called"}`))
+}
+
+func post(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		var message CallApplicationClass
+		e := json.Unmarshal(b, &message)
+		if e != nil {
+			log.Fatal(e)
+		} else {
+			db := connectToDB()
+			insertIntoDb(db, message.Name, message.Phone, message.Description)
+			w.Write([]byte(http.StatusText(http.StatusCreated) + "-" + strconv.Itoa(http.StatusCreated)))
+		}
+
+	}
+
+}
+
+func main() {
+	port := ":8080"
+	if len(os.Args) > 1 && os.Args[1] != "" {
+		port = os.Args[1]
+	}
+	fmt.Println("Server is listening on", port)
+	database := connectToDB()
+	createTable(database)
+	insertIntoDb(database, "initial insert", "", "")
+
 	r := mux.NewRouter()
-	api := r.PathPrefix("/api/v1").Subrouter()
+	api := r.PathPrefix("/api/v1/").Subrouter()
 	api.HandleFunc("/", get).Methods(http.MethodGet)
-	api.HandleFunc("/", post).Methods(http.MethodPost)
-	log.Fatal(http.ListenAndServe(":8080", r))
+	api.HandleFunc("/call", post).Methods(http.MethodPost)
+	log.Fatal(http.ListenAndServe(port, r))
 }
