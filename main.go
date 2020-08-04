@@ -24,7 +24,7 @@ type CallApplicationClass struct {
 }
 
 func connectToDB() *sql.DB {
-	database, err := sql.Open("sqlite3", "./nraboy.db")
+	database, err := sql.Open("sqlite3", "./call.db")
 	if err != nil {
 		log.Fatal(err)
 		panic(err)
