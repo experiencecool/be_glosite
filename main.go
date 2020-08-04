@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/cors"
 )
 
 type CallApplicationClass struct {
@@ -82,7 +83,7 @@ func get(w http.ResponseWriter, r *http.Request) {
 }
 
 func post(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	writeCorsHeaders(&w)
 	w.WriteHeader(http.StatusCreated)
 
 	b, err := ioutil.ReadAll(r.Body)
@@ -103,6 +104,13 @@ func post(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func writeCorsHeaders(w *http.ResponseWriter) {
+	// (*w).Header().Set("access-control-allow-headers",
+	// "access-control-allow-origin, content-type")
+	(*w).Header().Set("Content-Type", "application/json")
+	// (*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
+
 func main() {
 	port := ":8080"
 	if len(os.Args) > 1 && os.Args[1] != "" {
@@ -117,5 +125,11 @@ func main() {
 	api := r.PathPrefix("/api/v1/").Subrouter()
 	api.HandleFunc("/", get).Methods(http.MethodGet)
 	api.HandleFunc("/call", post).Methods(http.MethodPost)
-	log.Fatal(http.ListenAndServe(port, r))
+
+	/*
+		Only for developer use only
+	*/
+	corsHandled := cors.AllowAll().Handler(r)
+
+	log.Fatal(http.ListenAndServe(port, corsHandled))
 }
