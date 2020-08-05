@@ -77,8 +77,8 @@ func getRows(database *sql.DB) {
 func get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Conent-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	db := connectToDB()
-	getRows(db)
+	// db := connectToDB()
+	// getRows(db)
 	w.Write([]byte(`{"message": "GET called"}`))
 }
 
