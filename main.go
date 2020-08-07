@@ -50,26 +50,8 @@ func insertIntoDb(database *sql.DB, name string, phone string, description strin
 		database.Prepare("INSERT INTO people (time, name, phone, description) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		log.Fatal(err)
-		// panic(err)
 	} else {
 		statement.Exec(time.Now(), name, phone, description)
-	}
-
-}
-
-func getRows(database *sql.DB) {
-	rows, err := database.Query("SELECT id, time, name, phone, description FROM people")
-	if err != nil {
-		log.Fatal(err)
-		// panic(err)
-	} else {
-		var call CallApplicationClass
-		for rows.Next() {
-			rows.Scan(&call.Id, &call.Time, &call.Name, &call.Phone, &call.Description)
-			fmt.Println(strconv.Itoa(call.Id) +
-				": |" + call.Time.Month().String() + strconv.Itoa(call.Time.Day()) + "| " +
-				call.Name + " " + call.Phone + " \"" + call.Description + "\"")
-		}
 	}
 
 }
@@ -77,8 +59,6 @@ func getRows(database *sql.DB) {
 func get(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Conent-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	// db := connectToDB()
-	// getRows(db)
 	w.Write([]byte(`{"message": "GET called"}`))
 }
 
@@ -105,10 +85,7 @@ func post(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeCorsHeaders(w *http.ResponseWriter) {
-	// (*w).Header().Set("access-control-allow-headers",
-	// "access-control-allow-origin, content-type")
 	(*w).Header().Set("Content-Type", "application/json")
-	// (*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 func main() {
@@ -119,7 +96,6 @@ func main() {
 	fmt.Println("Server is listening on", port)
 	database := connectToDB()
 	createTable(database)
-	insertIntoDb(database, "initial insert", "", "")
 
 	r := mux.NewRouter()
 	api := r.PathPrefix("/api/v1/").Subrouter()
