@@ -89,7 +89,7 @@ func writeCorsHeaders(w *http.ResponseWriter) {
 }
 
 func main() {
-	port := ":8080"
+	port := ":5000"
 	if len(os.Args) > 1 && os.Args[1] != "" {
 		port = os.Args[1]
 	}
@@ -107,5 +107,5 @@ func main() {
 	*/
 	corsHandled := cors.AllowAll().Handler(r)
 
-	log.Fatal(http.ListenAndServe(port, corsHandled))
+	log.Fatal(http.ListenAndServeTLS(port, "localhost.crt", "localhost.key" corsHandled))
 }
