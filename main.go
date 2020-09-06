@@ -107,5 +107,5 @@ func main() {
 	*/
 	corsHandled := cors.AllowAll().Handler(r)
 
-	log.Fatal(http.ListenAndServeTLS(port, "localhost.crt", "localhost.key" corsHandled))
+	log.Fatal(http.ListenAndServeTLS(port, "localhost.crt", "localhost.key", corsHandled))
 }
